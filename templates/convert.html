@@ -1,0 +1,334 @@
+{% extends "base.html" %}
+
+{% block title %}Convert Files - PyPDF Toolkit Web{% endblock %}
+
+{% block content %}
+<div class="main-content">
+    <h2 class="page-title"><i class="fas fa-exchange-alt"></i> Convert Files</h2>
+    <p class="page-description">
+        Convert between PDF and image formats. Convert multiple images to a single PDF or extract PDF pages as individual images.
+    </p>
+
+    <div class="form-group">
+        <label class="form-label">Conversion Type</label>
+        <select id="conversionType" class="form-select">
+            <option value="images_to_pdf">Images to PDF</option>
+            <option value="pdf_to_images">PDF to Images</option>
+        </select>
+    </div>
+
+    <!-- Images to PDF Form -->
+    <form id="imagesToPdfForm" enctype="multipart/form-data">
+        <input type="hidden" name="conversion_type" value="images_to_pdf">
+        
+        <div class="form-group">
+            <label class="form-label">Select Image Files</label>
+            <div class="file-upload" id="imageUpload">
+                <div class="file-upload-icon">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                </div>
+                <div class="file-upload-text">Click to upload or drag and drop image files</div>
+                <div class="file-upload-hint">Supports JPG, PNG, BMP, TIFF, GIF</div>
+                <input type="file" id="imageInput" name="files" class="file-input" multiple 
+                       accept=".jpg,.jpeg,.png,.bmp,.tiff,.gif">
+            </div>
+        </div>
+
+        <div id="imageList" class="file-list hidden"></div>
+
+        <div class="form-group">
+            <label class="form-label">Page Size (Optional)</label>
+            <select id="pageSize" name="page_size" class="form-select">
+                <option value="">Auto (fit to image size)</option>
+                <option value="A4">A4</option>
+                <option value="Letter">Letter</option>
+                <option value="Legal">Legal</option>
+            </select>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block" id="convertToPdfBtn" disabled>
+            <i class="fas fa-file-pdf"></i> Convert to PDF
+        </button>
+    </form>
+
+    <!-- PDF to Images Form -->
+    <form id="pdfToImagesForm" enctype="multipart/form-data" class="hidden">
+        <input type="hidden" name="conversion_type" value="pdf_to_images">
+        
+        <div class="form-group">
+            <label class="form-label">Select PDF File</label>
+            <div class="file-upload" id="pdfUpload">
+                <div class="file-upload-icon">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                </div>
+                <div class="file-upload-text">Click to upload or drag and drop a PDF file</div>
+                <div class="file-upload-hint">Single PDF file only</div>
+                <input type="file" id="pdfInput" name="file" class="file-input" accept=".pdf">
+            </div>
+        </div>
+
+        <div id="pdfInfo" class="file-list hidden"></div>
+
+        <div class="form-group">
+            <label class="form-label">Output Image Format</label>
+            <select id="imageFormat" name="image_format" class="form-select">
+                <option value="PNG">PNG (best quality, larger files)</option>
+                <option value="JPEG">JPEG (smaller files, good quality)</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Image Quality (DPI)</label>
+            <select id="dpi" name="dpi" class="form-select">
+                <option value="150">150 DPI (web quality)</option>
+                <option value="200" selected>200 DPI (good quality)</option>
+                <option value="300">300 DPI (print quality)</option>
+                <option value="400">400 DPI (high quality)</option>
+            </select>
+        </div>
+
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i>
+            <strong>Note:</strong> PDF to image conversion requires additional dependencies. 
+            This feature may not be fully available in this demo version.
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block" id="convertToImagesBtn" disabled>
+            <i class="fas fa-images"></i> Convert to Images
+        </button>
+    </form>
+
+    <div id="results" class="results hidden">
+        <h3><i class="fas fa-check-circle"></i> Conversion Results</h3>
+        <div id="resultContent"></div>
+    </div>
+</div>
+
+<a href="{{ url_for('index') }}" class="btn btn-secondary" style="margin: 20px auto; display: block; width: fit-content;">
+    <i class="fas fa-arrow-left"></i> Back to Home
+</a>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const conversionType = document.getElementById('conversionType');
+    const imagesToPdfForm = document.getElementById('imagesToPdfForm');
+    const pdfToImagesForm = document.getElementById('pdfToImagesForm');
+    const imageUpload = document.getElementById('imageUpload');
+    const imageInput = document.getElementById('imageInput');
+    const imageList = document.getElementById('imageList');
+    const convertToPdfBtn = document.getElementById('convertToPdfBtn');
+    const pdfUpload = document.getElementById('pdfUpload');
+    const pdfInput = document.getElementById('pdfInput');
+    const pdfInfo = document.getElementById('pdfInfo');
+    const convertToImagesBtn = document.getElementById('convertToImagesBtn');
+    const results = document.getElementById('results');
+    const resultContent = document.getElementById('resultContent');
+    
+    let selectedImages = [];
+    let selectedPdf = null;
+
+    // Handle conversion type change
+    conversionType.addEventListener('change', function() {
+        if (this.value === 'images_to_pdf') {
+            imagesToPdfForm.classList.remove('hidden');
+            pdfToImagesForm.classList.add('hidden');
+        } else {
+            imagesToPdfForm.classList.add('hidden');
+            pdfToImagesForm.classList.remove('hidden');
+        }
+        results.classList.add('hidden');
+    });
+
+    // Setup file uploads
+    setupFileUpload(imageUpload, imageInput, handleImages);
+    setupFileUpload(pdfUpload, pdfInput, handlePdf);
+
+    function handleImages(files) {
+        const supportedTypes = ['image/jpeg', 'image/png', 'image/bmp', 'image/tiff', 'image/gif'];
+        
+        for (let file of files) {
+            if (supportedTypes.includes(file.type)) {
+                selectedImages.push(file);
+                addImageToList(file);
+            } else {
+                showAlert(`${file.name} is not a supported image format.`, 'error');
+            }
+        }
+        updateImageList();
+    }
+
+    function handlePdf(files) {
+        if (files.length > 0) {
+            const file = files[0];
+            if (file.type === 'application/pdf') {
+                selectedPdf = file;
+                showPdfInfo(file);
+                convertToImagesBtn.disabled = false;
+            } else {
+                showAlert('Please select a valid PDF file.', 'error');
+                selectedPdf = null;
+                convertToImagesBtn.disabled = true;
+                pdfInfo.classList.add('hidden');
+            }
+        }
+    }
+
+    function addImageToList(file) {
+        const fileItem = document.createElement('div');
+        fileItem.className = 'file-item';
+        fileItem.innerHTML = `
+            <div>
+                <span class="file-name">${file.name}</span>
+                <span class="file-size">(${formatFileSize(file.size)})</span>
+            </div>
+            <button type="button" class="file-remove" onclick="removeImage('${file.name}')">
+                <i class="fas fa-times"></i> Remove
+            </button>
+        `;
+        imageList.appendChild(fileItem);
+    }
+
+    function showPdfInfo(file) {
+        pdfInfo.innerHTML = `
+            <div class="file-item">
+                <div>
+                    <span class="file-name">${file.name}</span>
+                    <span class="file-size">(${formatFileSize(file.size)})</span>
+                </div>
+                <button type="button" class="file-remove" onclick="clearPdf()">
+                    <i class="fas fa-times"></i> Remove
+                </button>
+            </div>
+        `;
+        pdfInfo.classList.remove('hidden');
+    }
+
+    function updateImageList() {
+        if (selectedImages.length > 0) {
+            imageList.classList.remove('hidden');
+            convertToPdfBtn.disabled = false;
+        } else {
+            imageList.classList.add('hidden');
+            convertToPdfBtn.disabled = true;
+        }
+    }
+
+    window.removeImage = function(fileName) {
+        selectedImages = selectedImages.filter(file => file.name !== fileName);
+        imageList.innerHTML = '';
+        selectedImages.forEach(addImageToList);
+        updateImageList();
+    };
+
+    window.clearPdf = function() {
+        selectedPdf = null;
+        pdfInfo.classList.add('hidden');
+        convertToImagesBtn.disabled = true;
+        pdfInput.value = '';
+    };
+
+    // Handle Images to PDF form submission
+    imagesToPdfForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        if (selectedImages.length === 0) {
+            showAlert('Please select at least one image file.', 'error');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('conversion_type', 'images_to_pdf');
+        selectedImages.forEach(file => {
+            formData.append('files', file);
+        });
+        
+        const pageSize = document.getElementById('pageSize').value;
+        if (pageSize) {
+            formData.append('page_size', pageSize);
+        }
+
+        submitForm(formData, '/api/convert', convertToPdfBtn, function(data) {
+            showImagesToPdfResults(data);
+        });
+    });
+
+    // Handle PDF to Images form submission
+    pdfToImagesForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        if (!selectedPdf) {
+            showAlert('Please select a PDF file.', 'error');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('conversion_type', 'pdf_to_images');
+        formData.append('file', selectedPdf);
+        formData.append('image_format', document.getElementById('imageFormat').value);
+        formData.append('dpi', document.getElementById('dpi').value);
+
+        submitForm(formData, '/api/convert', convertToImagesBtn, function(data) {
+            showPdfToImagesResults(data);
+        });
+    });
+
+    function showImagesToPdfResults(data) {
+        resultContent.innerHTML = `
+            <div class="result-item">
+                <span class="result-info">Images Processed:</span>
+                <span class="result-value">${data.images_processed}</span>
+            </div>
+            <div class="result-item">
+                <span class="result-info">Output PDF:</span>
+                <span class="result-value">${data.filename}</span>
+            </div>
+            <div class="result-item">
+                <span class="result-info">File Size:</span>
+                <span class="result-value">${formatFileSize(data.file_size)}</span>
+            </div>
+            <div style="margin-top: 20px; text-align: center;">
+                <a href="${data.download_url}" class="btn btn-success" download="${data.filename}">
+                    <i class="fas fa-download"></i> Download PDF
+                </a>
+            </div>
+        `;
+        results.classList.remove('hidden');
+        results.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function showPdfToImagesResults(data) {
+        if (data.success) {
+            resultContent.innerHTML = `
+                <div class="result-item">
+                    <span class="result-info">Pages Converted:</span>
+                    <span class="result-value">${data.pages_converted}</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-info">Output Directory:</span>
+                    <span class="result-value">${data.output_directory}</span>
+                </div>
+                <div style="margin-top: 20px; text-align: center;">
+                    <a href="${data.download_url}" class="btn btn-success" download="images.zip">
+                        <i class="fas fa-download"></i> Download Images (ZIP)
+                    </a>
+                </div>
+            `;
+        } else {
+            resultContent.innerHTML = `
+                <div class="alert alert-error">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    ${data.error}
+                </div>
+            `;
+        }
+        results.classList.remove('hidden');
+        results.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // Initialize
+    updateImageList();
+});
+</script>
+{% endblock %}

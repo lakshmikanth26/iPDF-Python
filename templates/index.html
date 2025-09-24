@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}PyPDF Toolkit Web - Home{% endblock %}
+
+{% block content %}
+<div class="nav">
+    <div class="nav-grid">
+        <a href="{{ url_for('merge_page') }}" class="nav-item">
+            <i class="fas fa-layer-group"></i>
+            <div>Merge PDFs</div>
+            <small>Combine multiple PDFs into one</small>
+        </a>
+        
+        <a href="{{ url_for('split_page') }}" class="nav-item">
+            <i class="fas fa-cut"></i>
+            <div>Split PDFs</div>
+            <small>Split PDFs by pages or ranges</small>
+        </a>
+        
+        <a href="{{ url_for('compress_page') }}" class="nav-item">
+            <i class="fas fa-compress-alt"></i>
+            <div>Compress PDFs</div>
+            <small>Reduce PDF file size</small>
+        </a>
+        
+        <a href="{{ url_for('convert_page') }}" class="nav-item">
+            <i class="fas fa-exchange-alt"></i>
+            <div>Convert Files</div>
+            <small>PDF ↔ Image conversion</small>
+        </a>
+        
+        <a href="{{ url_for('unlock_page') }}" class="nav-item">
+            <i class="fas fa-unlock"></i>
+            <div>Unlock PDFs</div>
+            <small>Remove password protection</small>
+        </a>
+    </div>
+</div>
+
+<div class="main-content">
+    <h2 class="page-title">Welcome to PyPDF Toolkit Web</h2>
+    <div class="page-description">
+        <p>A comprehensive web-based PDF processing toolkit that provides all the essential tools you need to work with PDF documents. Our platform offers professional-grade features with an intuitive interface, making PDF manipulation accessible to everyone.</p>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px; margin-top: 40px;">
+            <div style="text-align: center; padding: 20px;">
+                <i class="fas fa-shield-alt" style="font-size: 3rem; color: #28a745; margin-bottom: 15px;"></i>
+                <h3 style="margin-bottom: 10px;">Secure & Private</h3>
+                <p style="color: #666;">All files are processed locally and automatically deleted after processing. Your privacy is our priority.</p>
+            </div>
+            
+            <div style="text-align: center; padding: 20px;">
+                <i class="fas fa-bolt" style="font-size: 3rem; color: #ffc107; margin-bottom: 15px;"></i>
+                <h3 style="margin-bottom: 10px;">Fast Processing</h3>
+                <p style="color: #666;">Optimized algorithms ensure quick processing of your PDF files, even for large documents.</p>
+            </div>
+            
+            <div style="text-align: center; padding: 20px;">
+                <i class="fas fa-mobile-alt" style="font-size: 3rem; color: #17a2b8; margin-bottom: 15px;"></i>
+                <h3 style="margin-bottom: 10px;">Mobile Friendly</h3>
+                <p style="color: #666;">Fully responsive design works perfectly on desktop, tablet, and mobile devices.</p>
+            </div>
+        </div>
+        
+        <div style="margin-top: 40px; padding: 30px; background: linear-gradient(135deg, #f8f9ff 0%, #e6f3ff 100%); border-radius: 15px; border: 1px solid #e1e8ff;">
+            <h3 style="text-align: center; margin-bottom: 20px; color: #333;">Features Overview</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+                <div>
+                    <h4 style="color: #667eea; margin-bottom: 10px;"><i class="fas fa-layer-group"></i> PDF Merging</h4>
+                    <ul style="color: #666; line-height: 1.6;">
+                        <li>Combine multiple PDFs</li>
+                        <li>Custom page ranges</li>
+                        <li>Preserve metadata</li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4 style="color: #667eea; margin-bottom: 10px;"><i class="fas fa-cut"></i> PDF Splitting</h4>
+                    <ul style="color: #666; line-height: 1.6;">
+                        <li>Split by page ranges</li>
+                        <li>Extract specific pages</li>
+                        <li>Bulk page extraction</li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4 style="color: #667eea; margin-bottom: 10px;"><i class="fas fa-compress-alt"></i> PDF Compression</h4>
+                    <ul style="color: #666; line-height: 1.6;">
+                        <li>Multiple compression levels</li>
+                        <li>Image optimization</li>
+                        <li>Metadata removal</li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4 style="color: #667eea; margin-bottom: 10px;"><i class="fas fa-exchange-alt"></i> File Conversion</h4>
+                    <ul style="color: #666; line-height: 1.6;">
+                        <li>Images to PDF</li>
+                        <li>PDF to images</li>
+                        <li>Batch processing</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

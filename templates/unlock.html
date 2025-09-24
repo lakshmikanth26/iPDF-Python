@@ -1,0 +1,283 @@
+{% extends "base.html" %}
+
+{% block title %}Unlock PDF - PyPDF Toolkit Web{% endblock %}
+
+{% block content %}
+<div class="main-content">
+    <h2 class="page-title"><i class="fas fa-unlock"></i> Unlock PDF</h2>
+    <p class="page-description">
+        Remove password protection from secured PDF files. You can provide the password or try common passwords automatically.
+    </p>
+
+    <form id="unlockForm" enctype="multipart/form-data">
+        <div class="form-group">
+            <label class="form-label">Select PDF File</label>
+            <div class="file-upload" id="fileUpload">
+                <div class="file-upload-icon">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                </div>
+                <div class="file-upload-text">Click to upload or drag and drop a PDF file</div>
+                <div class="file-upload-hint">Single PDF file only</div>
+                <input type="file" id="fileInput" name="file" class="file-input" accept=".pdf">
+            </div>
+        </div>
+
+        <div id="fileInfo" class="file-list hidden"></div>
+
+        <div id="encryptionInfo" class="hidden" style="background: #fff3cd; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #ffeaa7;">
+            <h4 style="margin-bottom: 10px; color: #856404;"><i class="fas fa-shield-alt"></i> Encryption Status</h4>
+            <div id="encryptionContent"></div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Password (Optional)</label>
+            <input type="password" id="password" name="password" class="form-input" 
+                   placeholder="Enter PDF password if known">
+            <small style="color: #666; font-size: 0.9rem; display: block; margin-top: 5px;">
+                Leave empty to try common passwords automatically.
+            </small>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+            <button type="submit" class="btn btn-primary" id="unlockBtn" disabled style="flex: 1;">
+                <i class="fas fa-unlock"></i> Unlock PDF
+            </button>
+            <button type="button" class="btn btn-secondary" id="checkBtn" disabled>
+                <i class="fas fa-info-circle"></i> Check Status
+            </button>
+        </div>
+
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i>
+            <strong>Security Notice:</strong> This tool attempts to remove password protection for legitimate purposes only. 
+            Ensure you have the right to unlock the PDF file.
+        </div>
+    </form>
+
+    <div id="results" class="results hidden">
+        <h3><i class="fas fa-check-circle"></i> Unlock Results</h3>
+        <div id="resultContent"></div>
+    </div>
+</div>
+
+<a href="{{ url_for('index') }}" class="btn btn-secondary" style="margin: 20px auto; display: block; width: fit-content;">
+    <i class="fas fa-arrow-left"></i> Back to Home
+</a>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fileUpload = document.getElementById('fileUpload');
+    const fileInput = document.getElementById('fileInput');
+    const fileInfo = document.getElementById('fileInfo');
+    const encryptionInfo = document.getElementById('encryptionInfo');
+    const encryptionContent = document.getElementById('encryptionContent');
+    const unlockForm = document.getElementById('unlockForm');
+    const unlockBtn = document.getElementById('unlockBtn');
+    const checkBtn = document.getElementById('checkBtn');
+    const results = document.getElementById('results');
+    const resultContent = document.getElementById('resultContent');
+    
+    let selectedFile = null;
+    let encryptionStatus = null;
+
+    // Setup file upload
+    setupFileUpload(fileUpload, fileInput, handleFile);
+
+    function handleFile(files) {
+        if (files.length > 0) {
+            const file = files[0];
+            if (file.type === 'application/pdf') {
+                selectedFile = file;
+                showFileInfo(file);
+                unlockBtn.disabled = false;
+                checkBtn.disabled = false;
+                checkEncryptionStatus(file);
+            } else {
+                showAlert('Please select a valid PDF file.', 'error');
+                selectedFile = null;
+                unlockBtn.disabled = true;
+                checkBtn.disabled = true;
+                fileInfo.classList.add('hidden');
+                encryptionInfo.classList.add('hidden');
+            }
+        }
+    }
+
+    function showFileInfo(file) {
+        fileInfo.innerHTML = `
+            <div class="file-item">
+                <div>
+                    <span class="file-name">${file.name}</span>
+                    <span class="file-size">(${formatFileSize(file.size)})</span>
+                </div>
+                <button type="button" class="file-remove" onclick="clearFile()">
+                    <i class="fas fa-times"></i> Remove
+                </button>
+            </div>
+        `;
+        fileInfo.classList.remove('hidden');
+    }
+
+    function checkEncryptionStatus(file) {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        fetch('/api/pdf-info', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                encryptionStatus = data.info;
+                showEncryptionInfo(data.info);
+            }
+        })
+        .catch(error => {
+            console.error('Error checking encryption status:', error);
+        });
+    }
+
+    function showEncryptionInfo(info) {
+        let statusText = 'Not Encrypted';
+        let statusColor = '#28a745';
+        let statusIcon = 'fa-unlock';
+        
+        if (info.is_encrypted) {
+            statusText = 'Password Protected';
+            statusColor = '#dc3545';
+            statusIcon = 'fa-lock';
+        }
+        
+        encryptionContent.innerHTML = `
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
+                <div style="text-align: center;">
+                    <div style="font-size: 1.2rem; font-weight: bold; color: ${statusColor};">
+                        <i class="fas ${statusIcon}"></i> ${statusText}
+                    </div>
+                    <div style="font-size: 0.9rem; color: #666;">Security Status</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 1.2rem; font-weight: bold; color: #333;">${info.pages || 'Unknown'}</div>
+                    <div style="font-size: 0.9rem; color: #666;">Pages</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 1.2rem; font-weight: bold; color: #333;">${formatFileSize(info.file_size)}</div>
+                    <div style="font-size: 0.9rem; color: #666;">File Size</div>
+                </div>
+            </div>
+        `;
+        
+        encryptionInfo.classList.remove('hidden');
+        
+        // Update UI based on encryption status
+        if (!info.is_encrypted) {
+            unlockBtn.innerHTML = '<i class="fas fa-check"></i> Already Unlocked';
+            unlockBtn.disabled = true;
+            showAlert('This PDF file is not password protected.', 'info');
+        } else {
+            unlockBtn.innerHTML = '<i class="fas fa-unlock"></i> Unlock PDF';
+            unlockBtn.disabled = false;
+        }
+    }
+
+    window.clearFile = function() {
+        selectedFile = null;
+        encryptionStatus = null;
+        fileInfo.classList.add('hidden');
+        encryptionInfo.classList.add('hidden');
+        unlockBtn.disabled = true;
+        checkBtn.disabled = true;
+        fileInput.value = '';
+        unlockBtn.innerHTML = '<i class="fas fa-unlock"></i> Unlock PDF';
+    };
+
+    // Handle check button
+    checkBtn.addEventListener('click', function() {
+        if (selectedFile) {
+            checkEncryptionStatus(selectedFile);
+        }
+    });
+
+    // Handle form submission
+    unlockForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        if (!selectedFile) {
+            showAlert('Please select a PDF file to unlock.', 'error');
+            return;
+        }
+
+        if (encryptionStatus && !encryptionStatus.is_encrypted) {
+            showAlert('This PDF file is not password protected.', 'info');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+        
+        const password = document.getElementById('password').value;
+        if (password) {
+            formData.append('password', password);
+        }
+
+        submitForm(formData, '/api/unlock', unlockBtn, function(data) {
+            showResults(data);
+        });
+    });
+
+    function showResults(data) {
+        if (data.success) {
+            let passwordInfo = 'Provided password';
+            if (data.password_found) {
+                passwordInfo = data.password_found === '[empty password]' ? 'No password (empty)' : `Found: "${data.password_found}"`;
+            }
+            
+            resultContent.innerHTML = `
+                <div class="result-item">
+                    <span class="result-info">Original File:</span>
+                    <span class="result-value">${selectedFile.name}</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-info">Password Used:</span>
+                    <span class="result-value">${passwordInfo}</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-info">Pages Unlocked:</span>
+                    <span class="result-value">${data.pages_unlocked}</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-info">Output File Size:</span>
+                    <span class="result-value">${formatFileSize(data.file_size)}</span>
+                </div>
+                <div style="margin-top: 20px; text-align: center;">
+                    <a href="${data.download_url}" class="btn btn-success" download="${data.filename}">
+                        <i class="fas fa-download"></i> Download Unlocked PDF
+                    </a>
+                </div>
+            `;
+        } else {
+            resultContent.innerHTML = `
+                <div class="alert alert-error">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>Unlock Failed:</strong> ${data.error}
+                </div>
+                <div style="margin-top: 15px; color: #666;">
+                    <strong>Suggestions:</strong>
+                    <ul style="margin-top: 10px; padding-left: 20px;">
+                        <li>Double-check the password and try again</li>
+                        <li>Try common passwords (leave password field empty)</li>
+                        <li>Contact the document owner for the correct password</li>
+                    </ul>
+                </div>
+            `;
+        }
+        
+        results.classList.remove('hidden');
+        results.scrollIntoView({ behavior: 'smooth' });
+    }
+});
+</script>
+{% endblock %}

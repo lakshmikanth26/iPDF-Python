@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+
+{% block title %}Merge PDFs - PyPDF Toolkit Web{% endblock %}
+
+{% block content %}
+<div class="main-content">
+    <h2 class="page-title"><i class="fas fa-layer-group"></i> Merge PDFs</h2>
+    <p class="page-description">
+        Combine multiple PDF files into a single document. You can specify page ranges for each PDF or merge entire documents.
+    </p>
+
+    <form id="mergeForm" enctype="multipart/form-data">
+        <div class="form-group">
+            <label class="form-label">Select PDF Files (minimum 2 files required)</label>
+            <div class="file-upload" id="fileUpload">
+                <div class="file-upload-icon">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                </div>
+                <div class="file-upload-text">Click to upload or drag and drop PDF files</div>
+                <div class="file-upload-hint">Support for multiple PDF files</div>
+                <input type="file" id="fileInput" name="files" class="file-input" multiple accept=".pdf">
+            </div>
+        </div>
+
+        <div id="fileList" class="file-list hidden"></div>
+
+        <div class="form-group">
+            <label class="form-label">Page Ranges (Optional)</label>
+            <input type="text" id="pageRanges" name="page_ranges" class="form-input" 
+                   placeholder="e.g., all, 1-3, 2,4,6 (one per file, comma-separated)">
+            <small style="color: #666; font-size: 0.9rem; display: block; margin-top: 5px;">
+                Specify page ranges for each PDF. Use "all" for entire document, "1-3" for ranges, or "1,3,5" for specific pages.
+            </small>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block" id="mergeBtn">
+            <i class="fas fa-layer-group"></i> Merge PDFs
+        </button>
+    </form>
+
+    <div id="results" class="results hidden">
+        <h3><i class="fas fa-check-circle"></i> Merge Results</h3>
+        <div id="resultContent"></div>
+    </div>
+</div>
+
+<a href="{{ url_for('index') }}" class="btn btn-secondary" style="margin: 20px auto; display: block; width: fit-content;">
+    <i class="fas fa-arrow-left"></i> Back to Home
+</a>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fileUpload = document.getElementById('fileUpload');
+    const fileInput = document.getElementById('fileInput');
+    const fileList = document.getElementById('fileList');
+    const mergeForm = document.getElementById('mergeForm');
+    const mergeBtn = document.getElementById('mergeBtn');
+    const results = document.getElementById('results');
+    const resultContent = document.getElementById('resultContent');
+    
+    let selectedFiles = [];
+
+    // Setup file upload
+    setupFileUpload(fileUpload, fileInput, handleFiles);
+
+    function handleFiles(files) {
+        for (let file of files) {
+            if (file.type === 'application/pdf') {
+                selectedFiles.push(file);
+                addFileToList(file);
+            } else {
+                showAlert(`${file.name} is not a PDF file and will be ignored.`, 'error');
+            }
+        }
+        updateFileList();
+    }
+
+    function addFileToList(file) {
+        const fileItem = document.createElement('div');
+        fileItem.className = 'file-item';
+        fileItem.innerHTML = `
+            <div>
+                <span class="file-name">${file.name}</span>
+                <span class="file-size">(${formatFileSize(file.size)})</span>
+            </div>
+            <button type="button" class="file-remove" onclick="removeFile('${file.name}')">
+                <i class="fas fa-times"></i> Remove
+            </button>
+        `;
+        fileList.appendChild(fileItem);
+    }
+
+    function updateFileList() {
+        if (selectedFiles.length > 0) {
+            fileList.classList.remove('hidden');
+        } else {
+            fileList.classList.add('hidden');
+        }
+        
+        // Update merge button state
+        if (selectedFiles.length >= 2) {
+            mergeBtn.disabled = false;
+        } else {
+            mergeBtn.disabled = true;
+        }
+    }
+
+    window.removeFile = function(fileName) {
+        selectedFiles = selectedFiles.filter(file => file.name !== fileName);
+        fileList.innerHTML = '';
+        selectedFiles.forEach(addFileToList);
+        updateFileList();
+    };
+
+    // Handle form submission
+    mergeForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        if (selectedFiles.length < 2) {
+            showAlert('Please select at least 2 PDF files to merge.', 'error');
+            return;
+        }
+
+        const formData = new FormData();
+        selectedFiles.forEach(file => {
+            formData.append('files', file);
+        });
+        
+        const pageRanges = document.getElementById('pageRanges').value;
+        if (pageRanges) {
+            formData.append('page_ranges', pageRanges);
+        }
+
+        submitForm(formData, '/api/merge', mergeBtn, function(data) {
+            showResults(data);
+        });
+    });
+
+    function showResults(data) {
+        resultContent.innerHTML = `
+            <div class="result-item">
+                <span class="result-info">Merged PDF:</span>
+                <span class="result-value">${data.filename}</span>
+            </div>
+            <div class="result-item">
+                <span class="result-info">Files Merged:</span>
+                <span class="result-value">${selectedFiles.length} PDFs</span>
+            </div>
+            <div style="margin-top: 20px; text-align: center;">
+                <a href="${data.download_url}" class="btn btn-success" download="${data.filename}">
+                    <i class="fas fa-download"></i> Download Merged PDF
+                </a>
+            </div>
+        `;
+        results.classList.remove('hidden');
+        
+        // Scroll to results
+        results.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // Initialize
+    updateFileList();
+});
+</script>
+{% endblock %}

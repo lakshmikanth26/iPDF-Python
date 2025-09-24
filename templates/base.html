@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}PyPDF Toolkit Web{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1><i class="fas fa-file-pdf"></i> PyPDF Toolkit Web</h1>
+            <p>Professional PDF processing tools for all your document needs</p>
+        </header>
+
+        {% block content %}{% endblock %}
+
+        <footer style="text-align: center; margin-top: 50px; color: rgba(255,255,255,0.8);">
+            <p>&copy; 2024 PyPDF Toolkit Web. Built with Flask and PyPDF.</p>
+        </footer>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script>
+        // File upload drag and drop functionality
+        function setupFileUpload(uploadArea, fileInput, callback) {
+            uploadArea.addEventListener('click', () => fileInput.click());
+            
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+            
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.classList.remove('dragover');
+            });
+            
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                const files = e.dataTransfer.files;
+                if (callback) callback(files);
+            });
+            
+            fileInput.addEventListener('change', (e) => {
+                if (callback) callback(e.target.files);
+            });
+        }
+
+        // Show loading state
+        function showLoading(button) {
+            const originalText = button.innerHTML;
+            button.innerHTML = '<span class="spinner"></span>Processing...';
+            button.disabled = true;
+            return originalText;
+        }
+
+        // Hide loading state
+        function hideLoading(button, originalText) {
+            button.innerHTML = originalText;
+            button.disabled = false;
+        }
+
+        // Show alert message
+        function showAlert(message, type = 'info') {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type}`;
+            alertDiv.innerHTML = message;
+            
+            const container = document.querySelector('.main-content');
+            container.insertBefore(alertDiv, container.firstChild);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.parentNode.removeChild(alertDiv);
+                }
+            }, 5000);
+        }
+
+        // Format file size
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // Download file
+        function downloadFile(url, filename) {
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        // Generic AJAX form submission
+        function submitForm(formData, url, button, successCallback) {
+            const originalText = showLoading(button);
+            
+            fetch(url, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                hideLoading(button, originalText);
+                if (data.success) {
+                    showAlert('Operation completed successfully!', 'success');
+                    if (successCallback) successCallback(data);
+                } else {
+                    showAlert('Error: ' + data.error, 'error');
+                }
+            })
+            .catch(error => {
+                hideLoading(button, originalText);
+                showAlert('Network error: ' + error.message, 'error');
+            });
+        }
+    </script>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

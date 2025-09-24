@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+
+{% block title %}Split PDF - PyPDF Toolkit Web{% endblock %}
+
+{% block content %}
+<div class="main-content">
+    <h2 class="page-title"><i class="fas fa-cut"></i> Split PDF</h2>
+    <p class="page-description">
+        Split a PDF file into multiple documents by specifying page ranges, number of pages per file, or extract specific pages.
+    </p>
+
+    <form id="splitForm" enctype="multipart/form-data">
+        <div class="form-group">
+            <label class="form-label">Select PDF File</label>
+            <div class="file-upload" id="fileUpload">
+                <div class="file-upload-icon">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                </div>
+                <div class="file-upload-text">Click to upload or drag and drop a PDF file</div>
+                <div class="file-upload-hint">Single PDF file only</div>
+                <input type="file" id="fileInput" name="file" class="file-input" accept=".pdf">
+            </div>
+        </div>
+
+        <div id="fileInfo" class="file-list hidden"></div>
+
+        <div class="form-group">
+            <label class="form-label">Split Method</label>
+            <select id="splitType" name="split_type" class="form-select">
+                <option value="individual">Split into individual pages</option>
+                <option value="pages">Split by number of pages per file</option>
+                <option value="ranges">Split by custom page ranges</option>
+            </select>
+        </div>
+
+        <div id="pagesPerFileGroup" class="form-group hidden">
+            <label class="form-label">Pages per File</label>
+            <input type="number" id="pagesPerFile" name="pages_per_file" class="form-input" 
+                   min="1" value="1" placeholder="Number of pages per output file">
+        </div>
+
+        <div id="pageRangesGroup" class="form-group hidden">
+            <label class="form-label">Page Ranges</label>
+            <input type="text" id="pageRanges" name="page_ranges" class="form-input" 
+                   placeholder="e.g., 1-5, 6-10, 11-15">
+            <small style="color: #666; font-size: 0.9rem; display: block; margin-top: 5px;">
+                Specify ranges like "1-5, 6-10, 11-15" or individual pages like "1, 3, 5, 7"
+            </small>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block" id="splitBtn" disabled>
+            <i class="fas fa-cut"></i> Split PDF
+        </button>
+    </form>
+
+    <div id="results" class="results hidden">
+        <h3><i class="fas fa-check-circle"></i> Split Results</h3>
+        <div id="resultContent"></div>
+    </div>
+</div>
+
+<a href="{{ url_for('index') }}" class="btn btn-secondary" style="margin: 20px auto; display: block; width: fit-content;">
+    <i class="fas fa-arrow-left"></i> Back to Home
+</a>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fileUpload = document.getElementById('fileUpload');
+    const fileInput = document.getElementById('fileInput');
+    const fileInfo = document.getElementById('fileInfo');
+    const splitForm = document.getElementById('splitForm');
+    const splitBtn = document.getElementById('splitBtn');
+    const splitType = document.getElementById('splitType');
+    const pagesPerFileGroup = document.getElementById('pagesPerFileGroup');
+    const pageRangesGroup = document.getElementById('pageRangesGroup');
+    const results = document.getElementById('results');
+    const resultContent = document.getElementById('resultContent');
+    
+    let selectedFile = null;
+
+    // Setup file upload
+    setupFileUpload(fileUpload, fileInput, handleFile);
+
+    function handleFile(files) {
+        if (files.length > 0) {
+            const file = files[0];
+            if (file.type === 'application/pdf') {
+                selectedFile = file;
+                showFileInfo(file);
+                splitBtn.disabled = false;
+            } else {
+                showAlert('Please select a valid PDF file.', 'error');
+                selectedFile = null;
+                splitBtn.disabled = true;
+                fileInfo.classList.add('hidden');
+            }
+        }
+    }
+
+    function showFileInfo(file) {
+        fileInfo.innerHTML = `
+            <div class="file-item">
+                <div>
+                    <span class="file-name">${file.name}</span>
+                    <span class="file-size">(${formatFileSize(file.size)})</span>
+                </div>
+                <button type="button" class="file-remove" onclick="clearFile()">
+                    <i class="fas fa-times"></i> Remove
+                </button>
+            </div>
+        `;
+        fileInfo.classList.remove('hidden');
+    }
+
+    window.clearFile = function() {
+        selectedFile = null;
+        fileInfo.classList.add('hidden');
+        splitBtn.disabled = true;
+        fileInput.value = '';
+    };
+
+    // Handle split type change
+    splitType.addEventListener('change', function() {
+        const value = this.value;
+        
+        // Hide all option groups
+        pagesPerFileGroup.classList.add('hidden');
+        pageRangesGroup.classList.add('hidden');
+        
+        // Show relevant option group
+        if (value === 'pages') {
+            pagesPerFileGroup.classList.remove('hidden');
+        } else if (value === 'ranges') {
+            pageRangesGroup.classList.remove('hidden');
+        }
+    });
+
+    // Handle form submission
+    splitForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        if (!selectedFile) {
+            showAlert('Please select a PDF file to split.', 'error');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+        formData.append('split_type', splitType.value);
+        
+        if (splitType.value === 'pages') {
+            const pagesPerFile = document.getElementById('pagesPerFile').value;
+            if (!pagesPerFile || pagesPerFile < 1) {
+                showAlert('Please specify a valid number of pages per file.', 'error');
+                return;
+            }
+            formData.append('pages_per_file', pagesPerFile);
+        } else if (splitType.value === 'ranges') {
+            const pageRanges = document.getElementById('pageRanges').value;
+            if (!pageRanges.trim()) {
+                showAlert('Please specify page ranges.', 'error');
+                return;
+            }
+            formData.append('page_ranges', pageRanges);
+        }
+
+        submitForm(formData, '/api/split', splitBtn, function(data) {
+            showResults(data);
+        });
+    });
+
+    function showResults(data) {
+        let methodText = 'Individual pages';
+        if (splitType.value === 'pages') {
+            methodText = `${document.getElementById('pagesPerFile').value} pages per file`;
+        } else if (splitType.value === 'ranges') {
+            methodText = 'Custom page ranges';
+        }
+        
+        resultContent.innerHTML = `
+            <div class="result-item">
+                <span class="result-info">Original File:</span>
+                <span class="result-value">${selectedFile.name}</span>
+            </div>
+            <div class="result-item">
+                <span class="result-info">Split Method:</span>
+                <span class="result-value">${methodText}</span>
+            </div>
+            <div class="result-item">
+                <span class="result-info">Files Created:</span>
+                <span class="result-value">${data.files_created}</span>
+            </div>
+            <div style="margin-top: 20px; text-align: center;">
+                <a href="${data.download_url}" class="btn btn-success" download="${data.filename}">
+                    <i class="fas fa-download"></i> Download Split PDFs (ZIP)
+                </a>
+            </div>
+        `;
+        results.classList.remove('hidden');
+        
+        // Scroll to results
+        results.scrollIntoView({ behavior: 'smooth' });
+    }
+});
+</script>
+{% endblock %}
