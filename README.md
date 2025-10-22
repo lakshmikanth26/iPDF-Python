@@ -17,11 +17,13 @@ A comprehensive Python Flask web application for PDF processing with professiona
 - Bulk processing with ZIP download
 
 ### 🗜️ PDF Compression
+- **Professional-grade compression** using Ghostscript engine (same as iLovePDF/Smallpdf)
 - Multiple compression levels (low, medium, high)
-- Reduce file size while maintaining quality
-- Image optimization within PDFs
+- **Advanced image optimization** with configurable DPI settings
+- **Font compression and subsetting** for maximum space savings
 - Metadata removal for privacy
 - Real-time compression estimates
+- **Fallback compression methods** for maximum compatibility
 
 ### 🔄 File Conversion
 - **Images to PDF**: Convert JPG, PNG, BMP, TIFF, GIF to PDF
@@ -48,6 +50,90 @@ A comprehensive Python Flask web application for PDF processing with professiona
 - **UI/UX**: Responsive design with drag-and-drop functionality
 
 ## Installation & Setup
+
+### Quick Start (Recommended)
+
+Choose the setup method for your operating system:
+
+#### 🍎 macOS / 🐧 Linux
+```bash
+# Make setup script executable and run
+chmod +x setup.sh
+./setup.sh
+```
+
+#### 🪟 Windows
+```powershell
+# PowerShell (Recommended)
+.\setup.ps1
+
+# Or Command Prompt
+setup.bat
+```
+
+### Manual Setup
+
+If you prefer manual installation or the automated setup doesn't work:
+
+#### Prerequisites
+- **Python 3.8+** - [Download Python](https://www.python.org/downloads/)
+- **Ghostscript** (for enhanced PDF compression) - [Download Ghostscript](https://www.ghostscript.com/download/gsdnld.html)
+
+#### Step-by-Step Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd iPDF-Python
+   ```
+
+2. **Create virtual environment**
+   ```bash
+   # macOS/Linux
+   python3 -m venv venv
+   source venv/bin/activate
+   
+   # Windows
+   python -m venv venv
+   venv\Scripts\activate
+   ```
+
+3. **Install dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Install Ghostscript** (for better compression)
+   
+   **macOS:**
+   ```bash
+   brew install ghostscript
+   ```
+   
+   **Linux (Ubuntu/Debian):**
+   ```bash
+   sudo apt update
+   sudo apt install ghostscript
+   ```
+   
+   **Windows:**
+   - Download from [Ghostscript website](https://www.ghostscript.com/download/gsdnld.html)
+   - Or use package manager:
+     ```powershell
+     # Using Chocolatey
+     choco install ghostscript -y
+     
+     # Using winget
+     winget install ArtifexSoftware.GhostScript
+     ```
+
+5. **Run the application**
+   ```bash
+   python app.py
+   ```
+
+6. **Access the application**
+   - Open your browser and go to `http://localhost:5000`
 
 ### 🚀 Quick Start (Recommended)
 

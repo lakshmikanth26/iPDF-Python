@@ -10,6 +10,13 @@ from pypdf import PdfReader
 from typing import List, Dict, Optional, Tuple
 import tempfile
 
+# Import pdf2image for PDF to image conversion
+try:
+    from pdf2image import convert_from_path
+    PDF2IMAGE_AVAILABLE = True
+except ImportError:
+    PDF2IMAGE_AVAILABLE = False
+
 
 class PDFConverter:
     """Class to handle PDF conversion operations."""
@@ -132,17 +139,11 @@ class PDFConverter:
             Dictionary with conversion results
         """
         try:
-            # Note: This is a simplified implementation
-            # For full PDF to image conversion, you would typically use:
-            # - pdf2image library (requires poppler)
-            # - PyMuPDF (fitz)
-            # - Wand (requires ImageMagick)
-            
-            # For this example, we'll provide a basic structure
-            # In a production environment, install pdf2image and uncomment below:
-            
-            """
-            from pdf2image import convert_from_path
+            if not PDF2IMAGE_AVAILABLE:
+                return {
+                    'success': False,
+                    'error': 'PDF to image conversion requires pdf2image library. Please install: pip install pdf2image'
+                }
             
             if not os.path.exists(pdf_path):
                 raise FileNotFoundError(f"PDF file not found: {pdf_path}")
@@ -165,23 +166,27 @@ class PDFConverter:
                     continue
                     
                 page_num = i + 1
-                output_file = os.path.join(output_dir, 
-                                         f"{base_name}_page_{page_num}.{image_format.lower()}")
-                image.save(output_file, image_format)
-                output_files.append(output_file)
+                if page_range:
+                    # Find the actual page number in the range
+                    actual_page = page_range[i] if i < len(page_range) else page_num
+                else:
+                    actual_page = page_num
+                
+                filename = f"{base_name}_page_{actual_page:03d}.{image_format.lower()}"
+                filepath = os.path.join(output_dir, filename)
+                
+                # Convert to specified format
+                if image_format.upper() == 'JPEG':
+                    image = image.convert('RGB')
+                
+                image.save(filepath, format=image_format.upper(), quality=95)
+                output_files.append(filepath)
             
             return {
                 'success': True,
-                'pages_converted': len(output_files),
                 'output_files': output_files,
-                'output_directory': output_dir
-            }
-            """
-            
-            # Placeholder implementation
-            return {
-                'success': False,
-                'error': 'PDF to image conversion requires additional dependencies (pdf2image, poppler-utils). Please install: pip install pdf2image'
+                'page_count': len(output_files),
+                'total_pages': len(images)
             }
             
         except Exception as e:

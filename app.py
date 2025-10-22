@@ -358,7 +358,26 @@ def api_convert_files():
             # Convert PDF to images
             result = pdf_converter.pdf_to_images(file_path, output_dir, image_format, dpi)
             
-            return jsonify(result)
+            if result['success']:
+                # Create a ZIP file of the converted images
+                import zipfile
+                zip_filename = f"images_{uuid.uuid4()}.zip"
+                zip_path = os.path.join(OUTPUT_FOLDER, zip_filename)
+                
+                with zipfile.ZipFile(zip_path, 'w') as zipf:
+                    for image_file in result['output_files']:
+                        # Add file to zip with just the filename (not full path)
+                        zipf.write(image_file, os.path.basename(image_file))
+                
+                # Update result with frontend-expected fields
+                result['pages_converted'] = result.get('page_count', 0)
+                result['output_directory'] = os.path.basename(output_dir)
+                result['download_url'] = f'/download/{zip_filename}'
+                result['filename'] = zip_filename
+                
+                return jsonify(result)
+            else:
+                return jsonify(result)
         
         else:
             return jsonify({'success': False, 'error': 'Invalid conversion type'})

@@ -100,7 +100,7 @@ elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
     PIP_CMD="pip3"
 else
     OS="Unknown"
-    PYTHON_CMD="python"
+    PYTHON_CMD="python3"
     PIP_CMD="pip"
 fi
 
@@ -136,13 +136,16 @@ run_command() {
 # Check prerequisites
 print_info "Checking prerequisites..."
 
-# Check Python
+# Check Python - prioritize python3
 PYTHON_FOUND=false
-for cmd in "$PYTHON_CMD" "python" "python3"; do
+for cmd in "python3" "$PYTHON_CMD" "python"; do
     if command_exists "$cmd"; then
-        PYTHON_CMD="$cmd"
-        PYTHON_FOUND=true
-        break
+        # Verify it's Python 3
+        if $cmd --version 2>&1 | grep -q "Python 3"; then
+            PYTHON_CMD="$cmd"
+            PYTHON_FOUND=true
+            break
+        fi
     fi
 done
 
@@ -172,9 +175,9 @@ if [[ $PYTHON_VERSION =~ Python\ ([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
     fi
 fi
 
-# Check pip
+# Check pip - prioritize pip3
 PIP_FOUND=false
-for cmd in "$PIP_CMD" "pip" "pip3"; do
+for cmd in "pip3" "$PIP_CMD" "pip"; do
     if command_exists "$cmd"; then
         PIP_CMD="$cmd"
         PIP_FOUND=true
@@ -306,6 +309,66 @@ echo
 print_info "For help and documentation, see:"
 echo -e "${YELLOW}     README.md${NC}"
 echo -e "${YELLOW}     PROJECT_SUMMARY.md${NC}"
+echo
+
+# Install Ghostscript and Poppler for enhanced PDF processing
+print_info "Installing Ghostscript and Poppler for enhanced PDF processing..."
+
+if [[ "$OS" == "macOS" ]]; then
+    if command -v brew &> /dev/null; then
+        print_info "Installing Ghostscript and Poppler via Homebrew..."
+        if brew install ghostscript poppler; then
+            print_success "Ghostscript and Poppler installed successfully!"
+        else
+            print_warning "Ghostscript/Poppler installation failed, but continuing..."
+        fi
+    else
+        print_warning "Homebrew not found. Please install Ghostscript and Poppler manually:"
+        echo -e "${YELLOW}     Visit: https://www.ghostscript.com/download/gsdnld.html${NC}"
+        echo -e "${YELLOW}     Visit: https://poppler.freedesktop.org/${NC}"
+    fi
+elif [[ "$OS" == "Linux" ]]; then
+    if command -v apt &> /dev/null; then
+        print_info "Installing Ghostscript and Poppler via apt..."
+        if sudo apt update && sudo apt install -y ghostscript poppler-utils; then
+            print_success "Ghostscript and Poppler installed successfully!"
+        else
+            print_warning "Ghostscript/Poppler installation failed, but continuing..."
+        fi
+    elif command -v yum &> /dev/null; then
+        print_info "Installing Ghostscript and Poppler via yum..."
+        if sudo yum install -y ghostscript poppler-utils; then
+            print_success "Ghostscript and Poppler installed successfully!"
+        else
+            print_warning "Ghostscript/Poppler installation failed, but continuing..."
+        fi
+    else
+        print_warning "Package manager not found. Please install Ghostscript and Poppler manually:"
+        echo -e "${YELLOW}     Visit: https://www.ghostscript.com/download/gsdnld.html${NC}"
+        echo -e "${YELLOW}     Visit: https://poppler.freedesktop.org/${NC}"
+    fi
+else
+    print_warning "Unsupported OS for automatic installation."
+    echo -e "${YELLOW}     Please install Ghostscript and Poppler manually:${NC}"
+    echo -e "${YELLOW}     - Ghostscript: https://www.ghostscript.com/download/gsdnld.html${NC}"
+    echo -e "${YELLOW}     - Poppler: https://poppler.freedesktop.org/${NC}"
+fi
+
+# Verify installations
+if command -v gs &> /dev/null; then
+    GS_VERSION=$(gs --version)
+    print_success "Ghostscript is available: version $GS_VERSION"
+    print_info "PDF compression will use advanced Ghostscript compression for better results!"
+else
+    print_warning "Ghostscript not found. PDF compression will use alternative methods."
+fi
+
+if command -v pdftoppm &> /dev/null; then
+    print_success "Poppler is available for PDF to image conversion!"
+    print_info "PDF to image conversion will work properly."
+else
+    print_warning "Poppler not found. PDF to image conversion may not work properly."
+fi
 echo
 
 print_success "Happy PDF processing! 🎉"

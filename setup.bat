@@ -21,6 +21,9 @@ echo %MAGENTA%╚═════════════════════
 echo.
 
 echo %CYAN%ℹ Detected Operating System: Windows%NC%
+echo %CYAN%ℹ Usage: setup.bat [--skip-venv] [--keep-venv] [--global]%NC%
+echo %CYAN%ℹ By default, the script will delete and recreate the virtual environment%NC%
+echo %CYAN%ℹ Use --keep-venv to preserve existing virtual environment%NC%
 echo.
 
 REM Check if Python is installed
@@ -60,15 +63,31 @@ if not exist "static\js" mkdir static\js && echo %GREEN%✓ Created directory: s
 
 REM Check for virtual environment
 set SKIP_VENV=0
+set KEEP_VENV=0
 if "%1"=="--skip-venv" set SKIP_VENV=1
 if "%1"=="--global" set SKIP_VENV=1
+if "%1"=="--keep-venv" set KEEP_VENV=1
+if "%2"=="--keep-venv" set KEEP_VENV=1
 
 if %SKIP_VENV%==0 (
     echo %CYAN%ℹ Setting up virtual environment...%NC%
     
+    REM Default behavior: delete and recreate venv unless KeepVenv is specified
     if exist "venv" (
-        echo %CYAN%ℹ Virtual environment already exists%NC%
-    ) else (
+        if %KEEP_VENV%==0 (
+            echo %CYAN%ℹ Removing existing virtual environment for fresh installation...%NC%
+            rmdir /s /q venv
+            if %errorlevel% neq 0 (
+                echo %YELLOW%⚠ Could not remove existing virtual environment, continuing...%NC%
+            ) else (
+                echo %GREEN%✓ Removed existing virtual environment%NC%
+            )
+        ) else (
+            echo %CYAN%ℹ Keeping existing virtual environment as requested...%NC%
+        )
+    )
+    
+    if not exist "venv" (
         echo Creating virtual environment...
         python -m venv venv
         if %errorlevel% neq 0 (
@@ -77,6 +96,8 @@ if %SKIP_VENV%==0 (
             exit /b 1
         )
         echo %GREEN%✓ Created virtual environment%NC%
+    ) else (
+        echo %CYAN%ℹ Using existing virtual environment%NC%
     )
     
     echo %CYAN%ℹ Installing dependencies in virtual environment...%NC%
@@ -169,6 +190,64 @@ echo.
 echo %CYAN%ℹ For Vercel deployment:%NC%
 echo %YELLOW%     npm i -g vercel%NC%
 echo %YELLOW%     vercel --prod%NC%
+echo.
+
+REM Install Ghostscript and Poppler for enhanced PDF processing
+echo %CYAN%ℹ Installing Ghostscript and Poppler for enhanced PDF processing...%NC%
+
+REM Check if Chocolatey is available
+choco --version >nul 2>&1
+if %errorlevel%==0 (
+    echo %CYAN%ℹ Installing Ghostscript and Poppler via Chocolatey...%NC%
+    choco install ghostscript -y
+    choco install poppler -y
+    if %errorlevel%==0 (
+        echo %GREEN%✓ Ghostscript and Poppler installed successfully!%NC%
+    ) else (
+        echo %YELLOW%⚠ Some installations failed, but continuing...%NC%
+    )
+) else (
+    REM Check if winget is available
+    winget --version >nul 2>&1
+    if %errorlevel%==0 (
+        echo %CYAN%ℹ Installing Ghostscript and Poppler via winget...%NC%
+        winget install ArtifexSoftware.GhostScript
+        winget install poppler
+        if %errorlevel%==0 (
+            echo %GREEN%✓ Ghostscript and Poppler installed successfully!%NC%
+        ) else (
+            echo %YELLOW%⚠ Some installations failed, but continuing...%NC%
+        )
+    ) else (
+        echo %YELLOW%⚠ No package manager found (Chocolatey or winget).%NC%
+        echo Please install Ghostscript and Poppler manually:
+        echo   - Ghostscript: https://www.ghostscript.com/download/gsdnld.html
+        echo   - Poppler: https://poppler.freedesktop.org/
+        echo Or install a package manager:
+        echo   - Chocolatey: https://chocolatey.org/install
+        echo   - winget: Usually pre-installed on Windows 10/11
+    )
+)
+
+REM Verify Ghostscript installation
+gs --version >nul 2>&1
+if %errorlevel%==0 (
+    for /f "tokens=*" %%i in ('gs --version 2^>^&1') do set GS_VERSION=%%i
+    echo %GREEN%✓ Ghostscript is available: version !GS_VERSION!%NC%
+    echo %CYAN%ℹ PDF compression will use advanced Ghostscript compression for better results!%NC%
+) else (
+    echo %YELLOW%⚠ Ghostscript not found. PDF compression will use alternative methods.%NC%
+)
+
+REM Verify Poppler installation
+pdftoppm --version >nul 2>&1
+if %errorlevel%==0 (
+    echo %GREEN%✓ Poppler is available for PDF to image conversion!%NC%
+    echo %CYAN%ℹ PDF to image conversion will work properly.%NC%
+) else (
+    echo %YELLOW%⚠ Poppler not found. PDF to image conversion may not work properly.%NC%
+)
+
 echo.
 
 echo %CYAN%ℹ For help and documentation, see:%NC%
